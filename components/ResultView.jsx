@@ -101,11 +101,19 @@ export default function ResultView({ results, onBack }) {
           <Card delay={0.1}>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 72, marginBottom: 12, animation: "bounce 2s ease infinite" }}>{r.emoji}</div>
-              <h3 style={{ color: "#E8D5B7", fontSize: 24, fontFamily: "'Noto Serif JP', serif" }}>{r.name}</h3>
+              <h3 style={{ color: "#E8D5B7", fontSize: 24, fontFamily: "'Noto Serif JP', serif" }}>{r.fullName}</h3>
+              <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 8 }}>
+                <span style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: `${r.colorCode}22`, color: r.colorCode }}>🎨 {r.color}</span>
+                <span style={{ fontSize: 12, padding: "4px 12px", borderRadius: 12, background: "rgba(255,255,255,0.08)", color: "#aaa" }}>No.{r.characterNumber}</span>
+              </div>
             </div>
           </Card>
           <Card delay={0.2}>
             <p style={{ color: "#ccc", lineHeight: 1.8, fontSize: 14 }}>{r.personality}</p>
+            <div style={{ marginTop: 12, padding: 12, background: `${r.colorCode}11`, borderRadius: 10, border: `1px solid ${r.colorCode}33` }}>
+              <div style={{ fontSize: 11, color: r.colorCode, marginBottom: 4 }}>🎨 カラーの特徴</div>
+              <div style={{ color: "#ccc", fontSize: 13 }}>{r.colorTrait}</div>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
               <div style={{ padding: 12, background: "rgba(76,175,80,0.1)", borderRadius: 10 }}>
                 <div style={{ fontSize: 11, color: "#81C784", marginBottom: 4 }}>💪 強み</div>
@@ -118,7 +126,7 @@ export default function ResultView({ results, onBack }) {
             </div>
           </Card>
           <AiReadingCard reading={r.aiReading} delay={0.3} />
-          <ShareButtons text={`【動物占い】あなたは「${r.name}」${r.emoji} ${r.personality.substring(0, 50)}...`} />
+          <ShareButtons text={`【動物占い】あなたは「${r.fullName}」${r.emoji} ${r.personality.substring(0, 50)}...`} />
           <GoToAiButton onClick={() => setActiveTab("aichat")} />
         </div>);
       }
