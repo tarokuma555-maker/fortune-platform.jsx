@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const PAYPAL_CLIENT_ID = "AR5MGgYHz7cqm19H_Ihu9eAl7Ub-HYWIrI8d1rWoUf1NUg_jCxrmNYxMbwFPd6imKNx2CzYBCdCpl3a1";
+const PAYPAL_CLIENT_ID = "Adr5IHr1leQcpcoE5SDJNMGGE8i2Q3Ef7VC9jrEEMvtWIcg_YKegfrh_WREzfbFZ_fr8_GrFK7FsQhEZ";
 const PAYPAL_PLAN_ID = "P-2LL29542NN558361DNGFZUNI";
 
 export default function PayPalButton({ onApprove }) {
