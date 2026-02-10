@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import Card from "./Card";
 import PaywallScreen from "./PaywallScreen";
 import { buildFortuneSummaryWithAI } from "@/lib/calculations";
 import { getSubscriptionData, saveSubscriptionData, clearSubscriptionData, needsReverification } from "@/lib/subscription";
 
 export default function AiChat({ results }) {
+  const { data: session } = useSession();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -18,35 +20,38 @@ export default function AiChat({ results }) {
   // サブスクリプション状態の確認
   useEffect(() => {
     async function checkSubscription() {
-      const data = getSubscriptionData();
-      if (!data) {
+      const email = session?.user?.email;
+      if (!email) {
         setSubscriptionStatus("inactive");
         return;
       }
-      if (!needsReverification(data)) {
+      // localStorageキャッシュを確認
+      const data = getSubscriptionData();
+      if (data && data.email === email && !needsReverification(data)) {
         setSubscriptionStatus("active");
         return;
       }
+      // サーバーで検証
       try {
         const res = await fetch("/api/checkout/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: data.email }),
+          body: JSON.stringify({ email }),
         });
         const result = await res.json();
         if (result.active) {
-          saveSubscriptionData({ email: result.email || data.email, subscriptionId: result.subscriptionId, verifiedAt: Date.now() });
+          saveSubscriptionData({ email, subscriptionId: result.subscriptionId, verifiedAt: Date.now() });
           setSubscriptionStatus("active");
         } else {
           clearSubscriptionData();
           setSubscriptionStatus("inactive");
         }
       } catch {
-        setSubscriptionStatus(data.email ? "active" : "inactive");
+        setSubscriptionStatus(data?.email ? "active" : "inactive");
       }
     }
     checkSubscription();
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,7 +65,7 @@ export default function AiChat({ results }) {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ returnUrl: window.location.origin }),
+        body: JSON.stringify({ returnUrl: window.location.origin, email: session?.user?.email }),
       });
       const data = await res.json();
       if (data.url) {
@@ -91,14 +96,13 @@ export default function AiChat({ results }) {
 
 【このユーザーの占い結果】
 ${fortuneSummary}`;
-      const subData = getSubscriptionData();
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system: systemPrompt,
           messages: apiMessages,
-          email: subData?.email,
+          email: session?.user?.email,
         }),
       });
       const data = await response.json();

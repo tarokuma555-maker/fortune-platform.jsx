@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 const STRIPE_API = "https://api.stripe.com/v1";
 
@@ -24,7 +25,9 @@ export async function POST(request) {
   }
 
   try {
-    const { sessionId, email } = await request.json();
+    const { sessionId, email: clientEmail } = await request.json();
+    const session = await auth();
+    const email = session?.user?.email || clientEmail;
 
     if (sessionId) {
       const session = await stripeGet(`/checkout/sessions/${sessionId}`, secretKey);

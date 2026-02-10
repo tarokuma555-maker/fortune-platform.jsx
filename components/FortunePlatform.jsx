@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
 import Card from "./Card";
 import StarParticles from "./StarParticles";
 import LoadingScreen from "./LoadingScreen";
@@ -24,6 +25,7 @@ import {
 import { saveSubscriptionData } from "@/lib/subscription";
 
 export default function FortunePlatform() {
+  const { data: session } = useSession();
   const [page, setPage] = useState("input");
   const [results, setResults] = useState(null);
   const [form, setForm] = useState({ sei: "", mei: "", year: "", month: "", day: "", hour: "", blood: "", mood: "" });
@@ -46,7 +48,7 @@ export default function FortunePlatform() {
         const result = await res.json();
         if (result.active) {
           saveSubscriptionData({
-            email: result.email,
+            email: session?.user?.email || result.email,
             subscriptionId: result.subscriptionId,
             verifiedAt: Date.now(),
           });
@@ -175,6 +177,32 @@ export default function FortunePlatform() {
     <div style={{ minHeight: "100vh", background: BG_GRADIENT, color: "white", position: "relative" }}>
       <StarParticles />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 480, margin: "0 auto", padding: "40px 20px 60px" }}>
+        {session?.user && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "flex-end",
+            gap: 8, marginBottom: 12, animation: "fadeSlideUp 0.5s ease both",
+          }}>
+            {session.user.image && (
+              <img
+                src={session.user.image}
+                alt=""
+                style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.2)" }}
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <span style={{ color: "#aaa", fontSize: 12 }}>{session.user.name || session.user.email}</span>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              style={{
+                background: "none", border: "1px solid rgba(255,255,255,0.15)",
+                color: "#888", fontSize: 11, padding: "4px 10px", borderRadius: 8,
+                cursor: "pointer",
+              }}
+            >
+              ログアウト
+            </button>
+          </div>
+        )}
         <div style={{ textAlign: "center", marginBottom: 36, animation: "fadeSlideUp 0.8s ease both" }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🔮</div>
           <h1 style={{ fontFamily: "'Noto Serif JP', serif", fontSize: 26, fontWeight: 700, color: "#E8D5B7", letterSpacing: 2, marginBottom: 8 }}>Fortune Oracle</h1>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 export async function POST(request) {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -18,7 +19,21 @@ export async function POST(request) {
   }
 
   try {
-    const { returnUrl } = await request.json();
+    const { returnUrl, email } = await request.json();
+    const session = await auth();
+    const customerEmail = session?.user?.email || email;
+
+    const params = {
+      mode: "subscription",
+      "payment_method_types[0]": "card",
+      "line_items[0][price]": priceId,
+      "line_items[0][quantity]": "1",
+      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: returnUrl,
+    };
+    if (customerEmail) {
+      params.customer_email = customerEmail;
+    }
 
     const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
@@ -26,14 +41,7 @@ export async function POST(request) {
         "Authorization": `Bearer ${secretKey}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({
-        mode: "subscription",
-        "payment_method_types[0]": "card",
-        "line_items[0][price]": priceId,
-        "line_items[0][quantity]": "1",
-        success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: returnUrl,
-      }).toString(),
+      body: new URLSearchParams(params).toString(),
     });
 
     const data = await res.json();

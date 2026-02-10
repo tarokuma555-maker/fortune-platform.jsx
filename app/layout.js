@@ -1,5 +1,6 @@
 import { Noto_Sans_JP, Noto_Serif_JP } from "next/font/google";
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -22,7 +23,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="ja">
       <body className={`${notoSansJP.variable} ${notoSerifJP.variable}`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

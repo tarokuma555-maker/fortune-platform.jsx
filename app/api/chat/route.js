@@ -1,12 +1,23 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 export async function POST(request) {
   try {
-    const { system, messages, email } = await request.json();
+    // サーバーサイドセッション検証
+    const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: "認証が必要です。ログインしてください。" },
+        { status: 401 }
+      );
+    }
+
+    const { system, messages } = await request.json();
+    const email = session.user.email;
 
     // サーバーサイドのサブスクリプション検証（Stripe設定済みの場合のみ）
     const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (stripeKey && !stripeKey.startsWith("sk_test_placeholder") && email) {
+    if (stripeKey && !stripeKey.startsWith("sk_test_placeholder")) {
       try {
         const custRes = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=1`, {
           headers: { "Authorization": `Bearer ${stripeKey}` },
