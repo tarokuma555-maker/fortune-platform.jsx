@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
-import { isStripeConfigured } from "@/lib/stripe";
 
 export async function POST(request) {
   try {
     const { system, messages, email } = await request.json();
 
     // サーバーサイドのサブスクリプション検証（Stripe設定済みの場合のみ）
-    if (isStripeConfigured() && email) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (stripeKey && !stripeKey.startsWith("sk_test_placeholder") && email) {
       try {
-        const Stripe = (await import("stripe")).default;
-        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-        const customers = await stripe.customers.list({ email, limit: 1 });
-        if (customers.data.length === 0) {
+        const custRes = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=1`, {
+          headers: { "Authorization": `Bearer ${stripeKey}` },
+        });
+        const customers = await custRes.json();
+        if (!customers.data || customers.data.length === 0) {
           return NextResponse.json({ error: "有効なサブスクリプションが見つかりません" }, { status: 403 });
         }
-        const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
-        if (subs.data.length === 0) {
+        const subsRes = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${customers.data[0].id}&status=active&limit=1`, {
+          headers: { "Authorization": `Bearer ${stripeKey}` },
+        });
+        const subs = await subsRes.json();
+        if (!subs.data || subs.data.length === 0) {
           return NextResponse.json({ error: "有効なサブスクリプションが見つかりません" }, { status: 403 });
         }
       } catch {

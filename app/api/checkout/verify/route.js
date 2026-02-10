@@ -1,21 +1,37 @@
 import { NextResponse } from "next/server";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
+
+const STRIPE_API = "https://api.stripe.com/v1";
+
+async function stripeGet(path, secretKey) {
+  const res = await fetch(`${STRIPE_API}${path}`, {
+    headers: { "Authorization": `Bearer ${secretKey}` },
+  });
+  return res.json();
+}
+
+async function stripeList(path, params, secretKey) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${STRIPE_API}${path}?${qs}`, {
+    headers: { "Authorization": `Bearer ${secretKey}` },
+  });
+  return res.json();
+}
 
 export async function POST(request) {
-  if (!isStripeConfigured()) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey || secretKey.startsWith("sk_test_placeholder")) {
     return NextResponse.json({ active: true, reason: "stripe_not_configured" });
   }
 
   try {
     const { sessionId, email } = await request.json();
-    const stripe = getStripe();
 
     if (sessionId) {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const session = await stripeGet(`/checkout/sessions/${sessionId}`, secretKey);
       if (session.payment_status === "paid" && session.subscription) {
-        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        const subscription = await stripeGet(`/subscriptions/${session.subscription}`, secretKey);
         if (subscription.status === "active" || subscription.status === "trialing") {
-          const customer = await stripe.customers.retrieve(session.customer);
+          const customer = await stripeGet(`/customers/${session.customer}`, secretKey);
           return NextResponse.json({
             active: true,
             email: customer.email,
@@ -27,14 +43,14 @@ export async function POST(request) {
     }
 
     if (email) {
-      const customers = await stripe.customers.list({ email, limit: 1 });
-      if (customers.data.length > 0) {
-        const subscriptions = await stripe.subscriptions.list({
+      const customers = await stripeList("/customers", { email, limit: "1" }, secretKey);
+      if (customers.data && customers.data.length > 0) {
+        const subscriptions = await stripeList("/subscriptions", {
           customer: customers.data[0].id,
           status: "active",
-          limit: 1,
-        });
-        if (subscriptions.data.length > 0) {
+          limit: "1",
+        }, secretKey);
+        if (subscriptions.data && subscriptions.data.length > 0) {
           return NextResponse.json({
             active: true,
             email,

@@ -1,35 +1,50 @@
 import { NextResponse } from "next/server";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
 
 export async function POST(request) {
-  if (!isStripeConfigured()) {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey || secretKey.startsWith("sk_test_placeholder")) {
     return NextResponse.json(
       { error: "Stripeが設定されていません。STRIPE_SECRET_KEYを設定してください。" },
       { status: 503 }
     );
   }
 
+  const priceId = process.env.STRIPE_PRICE_ID;
+  if (!priceId || priceId.startsWith("price_placeholder")) {
+    return NextResponse.json(
+      { error: "STRIPE_PRICE_IDが設定されていません。" },
+      { status: 503 }
+    );
+  }
+
   try {
     const { returnUrl } = await request.json();
-    const stripe = getStripe();
-    const priceId = process.env.STRIPE_PRICE_ID;
 
-    if (!priceId || priceId.startsWith("price_placeholder")) {
+    const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${secretKey}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        mode: "subscription",
+        "payment_method_types[0]": "card",
+        "line_items[0][price]": priceId,
+        "line_items[0][quantity]": "1",
+        success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: returnUrl,
+      }).toString(),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
       return NextResponse.json(
-        { error: "STRIPE_PRICE_IDが設定されていません。" },
-        { status: 503 }
+        { error: "チェックアウトセッションの作成に失敗しました", detail: data.error?.message || JSON.stringify(data) },
+        { status: res.status }
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: returnUrl,
-    });
-
-    return NextResponse.json({ url: session.url, sessionId: session.id });
+    return NextResponse.json({ url: data.url, sessionId: data.id });
   } catch (err) {
     return NextResponse.json(
       { error: "チェックアウトセッションの作成に失敗しました", detail: err.message },
