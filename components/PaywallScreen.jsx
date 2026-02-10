@@ -1,9 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import Card from "./Card";
-import PayPalButton from "./PayPalButton";
+
+const SQUARE_CHECKOUT_URL = "https://square.link/u/p7X6fBko?src=embd";
 
 export default function PaywallScreen({ onSubscribed }) {
+  const [paymentStarted, setPaymentStarted] = useState(false);
+
+  const openSquareCheckout = () => {
+    const topWindow = window.top || window;
+    const width = topWindow.innerWidth || document.documentElement.clientWidth || screen.width;
+    const height = topWindow.innerHeight || document.documentElement.clientHeight || screen.height;
+    const dualScreenLeft = topWindow.screenLeft !== undefined ? topWindow.screenLeft : topWindow.screenX;
+    const dualScreenTop = topWindow.screenTop !== undefined ? topWindow.screenTop : topWindow.screenY;
+
+    const h = height * 0.75;
+    const w = 500;
+    const systemZoom = width / topWindow.screen.availWidth;
+    const left = (width - w) / 2 / systemZoom + dualScreenLeft;
+    const top = (height - h) / 2 / systemZoom + dualScreenTop;
+
+    window.open(
+      SQUARE_CHECKOUT_URL,
+      "Square Payment",
+      `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
+    );
+    setPaymentStarted(true);
+  };
+
+  const handleConfirmPayment = () => {
+    if (onSubscribed) {
+      onSubscribed("square_payment");
+    }
+  };
+
   return (
     <div style={{ padding: "20px 0" }}>
       <Card delay={0.1}>
@@ -50,10 +81,52 @@ export default function PaywallScreen({ onSubscribed }) {
           ))}
         </ul>
 
-        <PayPalButton onApprove={onSubscribed} />
+        {!paymentStarted ? (
+          <button
+            onClick={openSquareCheckout}
+            style={{
+              width: "100%", padding: 16,
+              background: "linear-gradient(135deg, #7B1FA2, #4527A0)",
+              border: "none", borderRadius: 14, color: "white",
+              fontSize: 16, fontWeight: 700, cursor: "pointer",
+              fontFamily: "'Noto Serif JP', serif", letterSpacing: 1,
+              transition: "all 0.2s",
+            }}
+          >
+            🔮 月額プランに登録する
+          </button>
+        ) : (
+          <div>
+            <button
+              onClick={openSquareCheckout}
+              style={{
+                width: "100%", padding: 12, marginBottom: 10,
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12,
+                color: "#aaa", fontSize: 14, cursor: "pointer",
+                fontFamily: "'Noto Sans JP', sans-serif",
+              }}
+            >
+              決済画面を再度開く
+            </button>
+            <button
+              onClick={handleConfirmPayment}
+              style={{
+                width: "100%", padding: 16,
+                background: "linear-gradient(135deg, #2E7D32, #1B5E20)",
+                border: "none", borderRadius: 14, color: "white",
+                fontSize: 16, fontWeight: 700, cursor: "pointer",
+                fontFamily: "'Noto Serif JP', serif", letterSpacing: 1,
+                transition: "all 0.2s",
+              }}
+            >
+              ✅ 支払い完了 → AI相談を開始する
+            </button>
+          </div>
+        )}
 
         <p style={{ textAlign: "center", color: "#666", fontSize: 11, marginTop: 12 }}>
-          ※ PayPalによる安全な決済処理
+          ※ Squareによる安全な決済処理
         </p>
       </Card>
     </div>
