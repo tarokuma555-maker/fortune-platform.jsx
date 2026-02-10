@@ -6,16 +6,27 @@ import Card from "./Card";
 const SQUARE_CHECKOUT_URL = "https://square.link/u/8NFtf79J?src=embd";
 
 export default function PaywallScreen({ onSubscribed }) {
-  const [paymentStarted, setPaymentStarted] = useState(false);
+  const [step, setStep] = useState("initial"); // initial | confirm
+  const [orderId, setOrderId] = useState("");
+  const [error, setError] = useState("");
 
   const openSquareCheckout = () => {
     window.open(SQUARE_CHECKOUT_URL, "_blank");
-    setPaymentStarted(true);
+    setStep("confirm");
   };
 
-  const handleConfirmPayment = () => {
+  const handleSubmitOrder = () => {
+    const trimmed = orderId.trim();
+    if (!trimmed) {
+      setError("注文番号を入力してください");
+      return;
+    }
+    if (trimmed.length < 6) {
+      setError("正しい注文番号を入力してください");
+      return;
+    }
     if (onSubscribed) {
-      onSubscribed("square_payment");
+      onSubscribed(trimmed);
     }
   };
 
@@ -65,7 +76,7 @@ export default function PaywallScreen({ onSubscribed }) {
           ))}
         </ul>
 
-        {!paymentStarted ? (
+        {step === "initial" ? (
           <button
             onClick={openSquareCheckout}
             style={{
@@ -81,10 +92,25 @@ export default function PaywallScreen({ onSubscribed }) {
           </button>
         ) : (
           <div>
+            <div style={{
+              padding: 14, marginBottom: 14,
+              background: "rgba(206,147,216,0.08)",
+              borderRadius: 10, border: "1px solid rgba(206,147,216,0.15)",
+            }}>
+              <div style={{ fontSize: 13, color: "#CE93D8", fontWeight: 600, marginBottom: 8 }}>
+                決済完了後の手順
+              </div>
+              <p style={{ color: "#aaa", fontSize: 12, lineHeight: 1.7, margin: 0 }}>
+                1. Squareで決済を完了してください<br />
+                2. メールで届く注文確認番号を入力<br />
+                3. 「有効化する」ボタンをクリック
+              </p>
+            </div>
+
             <button
               onClick={openSquareCheckout}
               style={{
-                width: "100%", padding: 12, marginBottom: 10,
+                width: "100%", padding: 12, marginBottom: 12,
                 background: "rgba(255,255,255,0.08)",
                 border: "1px solid rgba(255,255,255,0.15)", borderRadius: 12,
                 color: "#aaa", fontSize: 14, cursor: "pointer",
@@ -93,18 +119,42 @@ export default function PaywallScreen({ onSubscribed }) {
             >
               決済画面を再度開く
             </button>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: "block", fontSize: 12, color: "#aaa", marginBottom: 6 }}>
+                注文確認番号（メールに記載）
+              </label>
+              <input
+                value={orderId}
+                onChange={e => { setOrderId(e.target.value); setError(""); }}
+                placeholder="例: ABCD-1234-EFGH"
+                style={{
+                  width: "100%", padding: "12px 14px",
+                  background: "rgba(255,255,255,0.06)",
+                  border: `1px solid ${error ? "#FF5252" : "rgba(255,255,255,0.12)"}`,
+                  borderRadius: 10, color: "white", fontSize: 14, outline: "none",
+                  boxSizing: "border-box", fontFamily: "'Noto Sans JP', sans-serif",
+                }}
+              />
+              {error && <div style={{ color: "#FF5252", fontSize: 11, marginTop: 4 }}>{error}</div>}
+            </div>
+
             <button
-              onClick={handleConfirmPayment}
+              onClick={handleSubmitOrder}
+              disabled={!orderId.trim()}
               style={{
                 width: "100%", padding: 16,
-                background: "linear-gradient(135deg, #2E7D32, #1B5E20)",
+                background: orderId.trim()
+                  ? "linear-gradient(135deg, #2E7D32, #1B5E20)"
+                  : "rgba(255,255,255,0.1)",
                 border: "none", borderRadius: 14, color: "white",
-                fontSize: 16, fontWeight: 700, cursor: "pointer",
+                fontSize: 16, fontWeight: 700,
+                cursor: orderId.trim() ? "pointer" : "default",
                 fontFamily: "'Noto Serif JP', serif", letterSpacing: 1,
                 transition: "all 0.2s",
               }}
             >
-              ✅ 支払い完了 → AI相談を開始する
+              ✅ 有効化する
             </button>
           </div>
         )}
