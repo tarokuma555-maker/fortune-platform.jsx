@@ -27,7 +27,6 @@ export async function POST(request) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: returnUrl,
-      customer_creation: "always",
     });
 
     return NextResponse.json({ url: session.url, sessionId: session.id });
