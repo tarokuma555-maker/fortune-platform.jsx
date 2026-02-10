@@ -9,23 +9,7 @@ export default function PaywallScreen({ onSubscribed }) {
   const [paymentStarted, setPaymentStarted] = useState(false);
 
   const openSquareCheckout = () => {
-    const topWindow = window.top || window;
-    const width = topWindow.innerWidth || document.documentElement.clientWidth || screen.width;
-    const height = topWindow.innerHeight || document.documentElement.clientHeight || screen.height;
-    const dualScreenLeft = topWindow.screenLeft !== undefined ? topWindow.screenLeft : topWindow.screenX;
-    const dualScreenTop = topWindow.screenTop !== undefined ? topWindow.screenTop : topWindow.screenY;
-
-    const h = height * 0.75;
-    const w = 500;
-    const systemZoom = width / topWindow.screen.availWidth;
-    const left = (width - w) / 2 / systemZoom + dualScreenLeft;
-    const top = (height - h) / 2 / systemZoom + dualScreenTop;
-
-    window.open(
-      SQUARE_CHECKOUT_URL,
-      "Square Payment",
-      `scrollbars=yes, width=${w / systemZoom}, height=${h / systemZoom}, top=${top}, left=${left}`
-    );
+    window.open(SQUARE_CHECKOUT_URL, "_blank");
     setPaymentStarted(true);
   };
 
