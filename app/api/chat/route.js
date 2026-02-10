@@ -12,29 +12,38 @@ export async function POST(request) {
       );
     }
 
-    const { system, messages } = await request.json();
-    const email = session.user.email;
+    const { system, messages, subscriptionId } = await request.json();
 
-    // サーバーサイドのサブスクリプション検証（Stripe設定済みの場合のみ）
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (stripeKey && !stripeKey.startsWith("sk_test_placeholder")) {
+    // サブスクリプション検証（PayPal Secretが設定されている場合）
+    const paypalSecret = process.env.PAYPAL_SECRET;
+    const paypalClientId = process.env.PAYPAL_CLIENT_ID || "AR5MGgYHz7cqm19H_Ihu9eAl7Ub-HYWIrI8d1rWoUf1NUg_jCxrmNYxMbwFPd6imKNx2CzYBCdCpl3a1";
+    const paypalApi = process.env.PAYPAL_API_URL || "https://api-m.paypal.com";
+
+    if (paypalSecret && subscriptionId) {
       try {
-        const custRes = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=1`, {
-          headers: { "Authorization": `Bearer ${stripeKey}` },
+        const tokenRes = await fetch(`${paypalApi}/v1/oauth2/token`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Basic ${Buffer.from(`${paypalClientId}:${paypalSecret}`).toString("base64")}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: "grant_type=client_credentials",
         });
-        const customers = await custRes.json();
-        if (!customers.data || customers.data.length === 0) {
-          return NextResponse.json({ error: "有効なサブスクリプションが見つかりません" }, { status: 403 });
-        }
-        const subsRes = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${customers.data[0].id}&status=active&limit=1`, {
-          headers: { "Authorization": `Bearer ${stripeKey}` },
+        const tokenData = await tokenRes.json();
+
+        const subRes = await fetch(`${paypalApi}/v1/billing/subscriptions/${subscriptionId}`, {
+          headers: { "Authorization": `Bearer ${tokenData.access_token}` },
         });
-        const subs = await subsRes.json();
-        if (!subs.data || subs.data.length === 0) {
-          return NextResponse.json({ error: "有効なサブスクリプションが見つかりません" }, { status: 403 });
+        const sub = await subRes.json();
+
+        if (sub.status !== "ACTIVE" && sub.status !== "APPROVED") {
+          return NextResponse.json(
+            { error: "有効なサブスクリプションが見つかりません" },
+            { status: 403 }
+          );
         }
       } catch {
-        // Stripe検証失敗時はアクセスを許可（fail-open）
+        // PayPal検証失敗時はアクセスを許可（fail-open）
       }
     }
 

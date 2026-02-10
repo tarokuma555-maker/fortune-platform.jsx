@@ -1,8 +1,9 @@
 "use client";
 
 import Card from "./Card";
+import PayPalButton from "./PayPalButton";
 
-export default function PaywallScreen({ onSubscribe, loading }) {
+export default function PaywallScreen({ onSubscribed }) {
   return (
     <div style={{ padding: "20px 0" }}>
       <Card delay={0.1}>
@@ -49,24 +50,10 @@ export default function PaywallScreen({ onSubscribe, loading }) {
           ))}
         </ul>
 
-        <button
-          onClick={onSubscribe}
-          disabled={loading}
-          style={{
-            width: "100%", padding: 16,
-            background: loading
-              ? "rgba(255,255,255,0.1)"
-              : "linear-gradient(135deg, #7B1FA2, #4527A0)",
-            border: "none", borderRadius: 14, color: "white",
-            fontSize: 16, fontWeight: 700, cursor: loading ? "default" : "pointer",
-            fontFamily: "'Noto Serif JP', serif", letterSpacing: 1,
-            transition: "all 0.2s",
-          }}
-        >
-          {loading ? "処理中..." : "🔮 月額プランに登録する"}
-        </button>
+        <PayPalButton onApprove={onSubscribed} />
+
         <p style={{ textAlign: "center", color: "#666", fontSize: 11, marginTop: 12 }}>
-          ※ Stripeによる安全な決済処理
+          ※ PayPalによる安全な決済処理
         </p>
       </Card>
     </div>

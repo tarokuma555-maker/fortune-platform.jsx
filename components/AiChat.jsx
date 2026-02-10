@@ -13,7 +13,6 @@ export default function AiChat({ results }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState("checking");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const scrollRef = useRef(null);
   const fortuneSummary = buildFortuneSummaryWithAI(results);
 
@@ -27,27 +26,32 @@ export default function AiChat({ results }) {
       }
       // localStorageキャッシュを確認
       const data = getSubscriptionData();
-      if (data && data.email === email && !needsReverification(data)) {
+      if (data && data.email === email && data.subscriptionId && !needsReverification(data)) {
         setSubscriptionStatus("active");
         return;
       }
-      // サーバーで検証
-      try {
-        const res = await fetch("/api/checkout/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
-        });
-        const result = await res.json();
-        if (result.active) {
-          saveSubscriptionData({ email, subscriptionId: result.subscriptionId, verifiedAt: Date.now() });
-          setSubscriptionStatus("active");
-        } else {
-          clearSubscriptionData();
-          setSubscriptionStatus("inactive");
+      // PayPalサブスクリプションIDがあればサーバーで検証
+      if (data?.subscriptionId) {
+        try {
+          const res = await fetch("/api/paypal/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ subscriptionId: data.subscriptionId }),
+          });
+          const result = await res.json();
+          if (result.active) {
+            saveSubscriptionData({ email, subscriptionId: data.subscriptionId, verifiedAt: Date.now() });
+            setSubscriptionStatus("active");
+          } else {
+            clearSubscriptionData();
+            setSubscriptionStatus("inactive");
+          }
+        } catch {
+          // 検証失敗時はキャッシュがあればアクティブ扱い
+          setSubscriptionStatus(data?.subscriptionId ? "active" : "inactive");
         }
-      } catch {
-        setSubscriptionStatus(data?.email ? "active" : "inactive");
+      } else {
+        setSubscriptionStatus("inactive");
       }
     }
     checkSubscription();
@@ -59,24 +63,11 @@ export default function AiChat({ results }) {
     }
   }, [messages, loading]);
 
-  const handleSubscribe = async () => {
-    setCheckoutLoading(true);
-    try {
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ returnUrl: window.location.origin, email: session?.user?.email }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error || "チェックアウトの作成に失敗しました");
-        setCheckoutLoading(false);
-      }
-    } catch {
-      alert("通信エラーが発生しました");
-      setCheckoutLoading(false);
+  const handlePayPalApprove = (subscriptionId) => {
+    const email = session?.user?.email;
+    if (email && subscriptionId) {
+      saveSubscriptionData({ email, subscriptionId, verifiedAt: Date.now() });
+      setSubscriptionStatus("active");
     }
   };
 
@@ -96,13 +87,14 @@ export default function AiChat({ results }) {
 
 【このユーザーの占い結果】
 ${fortuneSummary}`;
+      const subData = getSubscriptionData();
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system: systemPrompt,
           messages: apiMessages,
-          email: session?.user?.email,
+          subscriptionId: subData?.subscriptionId,
         }),
       });
       const data = await response.json();
@@ -138,7 +130,7 @@ ${fortuneSummary}`;
 
   // 未購読 → ペイウォール表示
   if (subscriptionStatus === "inactive") {
-    return <PaywallScreen onSubscribe={handleSubscribe} loading={checkoutLoading} />;
+    return <PaywallScreen onSubscribed={handlePayPalApprove} />;
   }
 
   // アクティブ → チャットUI
