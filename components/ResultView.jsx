@@ -313,7 +313,7 @@ export default function ResultView({ results, onBack }) {
               color: activeTab === tab.id ? "#E8D5B7" : "#888",
               fontSize: 12, fontWeight: activeTab === tab.id ? 600 : 400,
               cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap",
-            }}>{tab.emoji} {tab.label}</button>
+            }}>{tab.emoji} {tab.label}{tab.premium ? " 🔒" : ""}</button>
           ))}
         </div>
         <div style={{ paddingBottom: 40 }}>{renderTab()}</div>

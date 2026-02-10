@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "./Card";
 import StarParticles from "./StarParticles";
 import LoadingScreen from "./LoadingScreen";
@@ -21,12 +21,41 @@ import {
   drawTarot,
   buildFortuneSummary,
 } from "@/lib/calculations";
+import { saveSubscriptionData } from "@/lib/subscription";
 
 export default function FortunePlatform() {
   const [page, setPage] = useState("input");
   const [results, setResults] = useState(null);
   const [form, setForm] = useState({ sei: "", mei: "", year: "", month: "", day: "", hour: "", blood: "", mood: "" });
   const [errors, setErrors] = useState({});
+
+  // Stripe Checkout からのリダイレクト復帰処理
+  useEffect(() => {
+    async function handleCheckoutReturn() {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+      if (!sessionId) return;
+      window.history.replaceState({}, "", window.location.pathname);
+      try {
+        const res = await fetch("/api/checkout/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        const result = await res.json();
+        if (result.active) {
+          saveSubscriptionData({
+            email: result.email,
+            subscriptionId: result.subscriptionId,
+            verifiedAt: Date.now(),
+          });
+        }
+      } catch {
+        // サイレントフェイル
+      }
+    }
+    handleCheckoutReturn();
+  }, []);
 
   const handleChange = (field) => (e) => {
     setForm(f => ({ ...f, [field]: e.target.value }));
@@ -80,7 +109,11 @@ export default function FortunePlatform() {
         const keys = ["shichusuimei", "seimei", "tarot", "animal", "numerology", "kyusei", "zodiac", "blood", "rokusei", "birthday"];
         for (const key of keys) {
           if (readings[key]) {
-            baseResults[key] = { ...baseResults[key], aiReading: readings[key] };
+            const val = readings[key];
+            const aiReading = typeof val === "string"
+              ? { "恋愛運": val, "仕事運": "", "金運": "", "今年上半期の戦略": "" }
+              : val;
+            baseResults[key] = { ...baseResults[key], aiReading };
           }
         }
       }

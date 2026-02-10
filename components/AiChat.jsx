@@ -2,20 +2,78 @@
 
 import { useState, useEffect, useRef } from "react";
 import Card from "./Card";
+import PaywallScreen from "./PaywallScreen";
 import { buildFortuneSummaryWithAI } from "@/lib/calculations";
+import { getSubscriptionData, saveSubscriptionData, clearSubscriptionData, needsReverification } from "@/lib/subscription";
 
 export default function AiChat({ results }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState("checking");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const scrollRef = useRef(null);
   const fortuneSummary = buildFortuneSummaryWithAI(results);
+
+  // サブスクリプション状態の確認
+  useEffect(() => {
+    async function checkSubscription() {
+      const data = getSubscriptionData();
+      if (!data) {
+        setSubscriptionStatus("inactive");
+        return;
+      }
+      if (!needsReverification(data)) {
+        setSubscriptionStatus("active");
+        return;
+      }
+      try {
+        const res = await fetch("/api/checkout/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: data.email }),
+        });
+        const result = await res.json();
+        if (result.active) {
+          saveSubscriptionData({ email: result.email || data.email, subscriptionId: result.subscriptionId, verifiedAt: Date.now() });
+          setSubscriptionStatus("active");
+        } else {
+          clearSubscriptionData();
+          setSubscriptionStatus("inactive");
+        }
+      } catch {
+        setSubscriptionStatus(data.email ? "active" : "inactive");
+      }
+    }
+    checkSubscription();
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading]);
+
+  const handleSubscribe = async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnUrl: window.location.origin }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "チェックアウトの作成に失敗しました");
+        setCheckoutLoading(false);
+      }
+    } catch {
+      alert("通信エラーが発生しました");
+      setCheckoutLoading(false);
+    }
+  };
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -33,12 +91,14 @@ export default function AiChat({ results }) {
 
 【このユーザーの占い結果】
 ${fortuneSummary}`;
+      const subData = getSubscriptionData();
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system: systemPrompt,
           messages: apiMessages,
+          email: subData?.email,
         }),
       });
       const data = await response.json();
@@ -60,6 +120,24 @@ ${fortuneSummary}`;
     "開運アクションを教えて",
   ];
 
+  // サブスクリプション確認中
+  if (subscriptionStatus === "checking") {
+    return (
+      <Card delay={0.1}>
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <div style={{ fontSize: 36, animation: "pulse 2s ease infinite" }}>🔮</div>
+          <p style={{ color: "#aaa", fontSize: 14, marginTop: 12 }}>確認中...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  // 未購読 → ペイウォール表示
+  if (subscriptionStatus === "inactive") {
+    return <PaywallScreen onSubscribe={handleSubscribe} loading={checkoutLoading} />;
+  }
+
+  // アクティブ → チャットUI
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 160px)", maxHeight: 600 }}>
       <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", paddingBottom: 8, WebkitOverflowScrolling: "touch" }}>

@@ -9,5 +9,5 @@ export const TAB_LIST = [
   { id: "blood", label: "血液型", emoji: "🩸" },
   { id: "rokusei", label: "六星占術", emoji: "🪐" },
   { id: "birthday", label: "花・石", emoji: "💎" },
-  { id: "aichat", label: "AI相談", emoji: "🤖" },
+  { id: "aichat", label: "AI相談", emoji: "🤖", premium: true },
 ];

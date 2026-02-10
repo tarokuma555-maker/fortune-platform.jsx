@@ -23,6 +23,13 @@ export default function GoToAiButton({ onClick }) {
       }}
     >
       🤖 もっと詳しく占いたい場合はこちら
+      <span style={{
+        fontSize: 10, padding: "2px 8px",
+        background: "rgba(255,215,0,0.2)", borderRadius: 8,
+        color: "#FFD700", fontWeight: 700,
+      }}>
+        🔒 プレミアム
+      </span>
     </button>
   );
 }

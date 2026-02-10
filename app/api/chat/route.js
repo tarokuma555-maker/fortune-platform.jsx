@@ -1,8 +1,27 @@
 import { NextResponse } from "next/server";
+import { isStripeConfigured } from "@/lib/stripe";
 
 export async function POST(request) {
   try {
-    const { system, messages } = await request.json();
+    const { system, messages, email } = await request.json();
+
+    // サーバーサイドのサブスクリプション検証（Stripe設定済みの場合のみ）
+    if (isStripeConfigured() && email) {
+      try {
+        const Stripe = (await import("stripe")).default;
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+        const customers = await stripe.customers.list({ email, limit: 1 });
+        if (customers.data.length === 0) {
+          return NextResponse.json({ error: "有効なサブスクリプションが見つかりません" }, { status: 403 });
+        }
+        const subs = await stripe.subscriptions.list({ customer: customers.data[0].id, status: "active", limit: 1 });
+        if (subs.data.length === 0) {
+          return NextResponse.json({ error: "有効なサブスクリプションが見つかりません" }, { status: 403 });
+        }
+      } catch {
+        // Stripe検証失敗時はアクセスを許可（fail-open）
+      }
+    }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
