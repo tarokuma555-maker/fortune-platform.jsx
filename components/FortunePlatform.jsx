@@ -28,6 +28,7 @@ export default function FortunePlatform() {
   const [results, setResults] = useState(null);
   const [form, setForm] = useState({ sei: "", mei: "", year: "", month: "", day: "", hour: "", blood: "", mood: "" });
   const [errors, setErrors] = useState({});
+  const [loadingProgress, setLoadingProgress] = useState({ percent: 0, stage: "" });
 
   // Stripe Checkout からのリダイレクト復帰処理
   useEffect(() => {
@@ -76,7 +77,11 @@ export default function FortunePlatform() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    setLoadingProgress({ percent: 0, stage: "準備中..." });
     setPage("loading");
+
+    // ステージ1: ローカル計算（5%→15%）
+    setLoadingProgress({ percent: 5, stage: "命式を計算しています..." });
     const y = parseInt(form.year), m = parseInt(form.month), d = parseInt(form.day);
     const lpn = calcLifePathNumber(y, m, d);
 
@@ -92,8 +97,28 @@ export default function FortunePlatform() {
       rokusei: calcRokusei(y, m, d),
       birthday: MONTH_FLOWERS[m - 1],
     };
+    setLoadingProgress({ percent: 15, stage: "基礎データの計算が完了しました" });
 
-    // AI鑑定文の一括生成
+    // ステージ2: AI鑑定文の生成（15%→90%）
+    // AI待ち中は徐々にプログレスを進めるタイマー
+    let aiPercent = 15;
+    const progressTimer = setInterval(() => {
+      aiPercent = Math.min(aiPercent + 1, 88);
+      const aiStages = [
+        [15, "AIに鑑定データを送信中..."],
+        [25, "四柱推命・姓名判断を鑑定中..."],
+        [35, "タロット・動物占いを鑑定中..."],
+        [45, "数秘術・九星気学を鑑定中..."],
+        [55, "星座・血液型を鑑定中..."],
+        [65, "六星占術・誕生花石を鑑定中..."],
+        [75, "恋愛運・仕事運を分析中..."],
+        [82, "金運・戦略を生成中..."],
+        [88, "鑑定文を最終調整中..."],
+      ];
+      const stage = [...aiStages].reverse().find(([threshold]) => aiPercent >= threshold);
+      setLoadingProgress({ percent: aiPercent, stage: stage ? stage[1] : "" });
+    }, 400);
+
     try {
       const summary = buildFortuneSummary(baseResults);
       const res = await fetch("/api/fortune", {
@@ -104,7 +129,10 @@ export default function FortunePlatform() {
           userName: `${form.sei} ${form.mei}`,
         }),
       });
+      clearInterval(progressTimer);
+
       if (res.ok) {
+        setLoadingProgress({ percent: 92, stage: "AI鑑定文を処理中..." });
         const { readings } = await res.json();
         const keys = ["shichusuimei", "seimei", "tarot", "animal", "numerology", "kyusei", "zodiac", "blood", "rokusei", "birthday"];
         for (const key of keys) {
@@ -116,11 +144,18 @@ export default function FortunePlatform() {
             baseResults[key] = { ...baseResults[key], aiReading };
           }
         }
+        setLoadingProgress({ percent: 100, stage: "鑑定完了！" });
+      } else {
+        clearInterval(progressTimer);
+        setLoadingProgress({ percent: 100, stage: "鑑定完了" });
       }
     } catch (_) {
-      // AI失敗時はbase dataのみで続行
+      clearInterval(progressTimer);
+      setLoadingProgress({ percent: 100, stage: "鑑定完了" });
     }
 
+    // 完了アニメーション用に少し待つ
+    await new Promise(r => setTimeout(r, 500));
     setResults(baseResults);
     setPage("result");
   };
@@ -133,7 +168,7 @@ export default function FortunePlatform() {
   };
   const labelStyle = { display: "block", fontSize: 12, color: "#aaa", marginBottom: 6, fontWeight: 500 };
 
-  if (page === "loading") return <LoadingScreen />;
+  if (page === "loading") return <LoadingScreen progress={loadingProgress.percent} stage={loadingProgress.stage} />;
   if (page === "result") return <ResultView results={results} onBack={() => setPage("input")} />;
 
   return (
