@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Card from "./Card";
 
-const SQUARE_CHECKOUT_URL = "https://square.link/u/p7X6fBko?src=embd";
+const SQUARE_CHECKOUT_URL = "https://square.link/u/8NFtf79J?src=embd";
 
 export default function PaywallScreen({ onSubscribed }) {
   const [paymentStarted, setPaymentStarted] = useState(false);
