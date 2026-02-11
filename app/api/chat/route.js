@@ -16,7 +16,7 @@ export async function POST(request) {
 
     // サブスクリプション検証（PayPal Secretが設定されている場合）
     const paypalSecret = process.env.PAYPAL_SECRET;
-    const paypalClientId = process.env.PAYPAL_CLIENT_ID || "Adr5IHr1leQcpcoE5SDJNMGGE8i2Q3Ef7VC9jrEEMvtWIcg_YKegfrh_WREzfbFZ_fr8_GrFK7FsQhEZ";
+    const paypalClientId = process.env.PAYPAL_CLIENT_ID || "AZfVV9yX7ICCelbYfJyHO7kV5bk026HXlBIxWnZk1E4yCZ6tBf7Fya6QeokmqWX8w1wquZW9FXpBj6G7";
     const paypalApi = process.env.PAYPAL_API_URL || "https://api-m.paypal.com";
 
     if (paypalSecret && subscriptionId) {

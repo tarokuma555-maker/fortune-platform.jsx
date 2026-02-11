@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 
-const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || "Adr5IHr1leQcpcoE5SDJNMGGE8i2Q3Ef7VC9jrEEMvtWIcg_YKegfrh_WREzfbFZ_fr8_GrFK7FsQhEZ";
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || "AZfVV9yX7ICCelbYfJyHO7kV5bk026HXlBIxWnZk1E4yCZ6tBf7Fya6QeokmqWX8w1wquZW9FXpBj6G7";
 const PAYPAL_SECRET = process.env.PAYPAL_SECRET;
 const PAYPAL_API = process.env.PAYPAL_API_URL || "https://api-m.paypal.com";
 
