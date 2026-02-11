@@ -4,10 +4,10 @@ export async function POST(request) {
   try {
     const { summary, userName } = await request.json();
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY が設定されていません" },
+        { error: "OPENAI_API_KEY が設定されていません" },
         { status: 500 }
       );
     }
@@ -42,22 +42,18 @@ ${summary}
   "birthday": { "恋愛運": "鑑定文", "仕事運": "鑑定文", "金運": "鑑定文", "今年上半期の戦略": "鑑定文" }
 }`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "gpt-4o",
         max_tokens: 16000,
-        system: systemPrompt,
         messages: [
-          {
-            role: "user",
-            content: `${userName}さんの10種類の占い鑑定を、上記データに基づいてJSON形式で生成してください。`,
-          },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `${userName}さんの10種類の占い鑑定を、上記データに基づいてJSON形式で生成してください。` },
         ],
       }),
     });
@@ -71,7 +67,7 @@ ${summary}
     }
 
     const data = await response.json();
-    const text = data.content?.map((c) => c.text || "").join("") || "";
+    const text = data.choices?.[0]?.message?.content || "";
 
     // JSONを抽出（```json ... ``` ブロックにも対応）
     let jsonStr = text;
